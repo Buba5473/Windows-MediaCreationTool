@@ -1,5 +1,5 @@
-<# ::  https://pastebin.com/bBw0Avc4  or  https://git.io/MediaCreationTool.bat
-@echo off &title MediaCreationTool.bat by AveYo v2018.10.08
+<# :: Ninja edits = https://pastebin.com/bBw0Avc4                             Gist mirror = https://git.io/MediaCreationTool.bat
+@echo off &title MediaCreationTool.bat by AveYo v2018.10.10
 :: Universal MediaCreationTool wrapper for all "RedStone" Windows 10 MCT versions: 1607, 1703, 1709, 1803 and 1809
 :: Using as source nothing but microsoft-hosted original files for the current and past Windows 10 MCT releases
 :: Ingenious full support for business editions (Enterprise / VL) selecting language, x86, x64 or AIO inside MCT GUI
@@ -7,7 +7,8 @@
 :: - native xml patching so no editions spam: just combined client and combined business (individual business in 1607, 1703)
 :: - patching all eula links to use http as MCT can fail at downloading - specially under naked Windows 7 host / outdated TLS
 :: - generating products.xml entries for business editions in 1607 and 1703 that never had them included so far (optional)
-:: - 50KB increase in script size is well worth the feature set imho but you can skip it by copy/pasting until the NOTICE marker
+:: - 50KB increase in script size is well worth above feature imho but you can skip it by copy/pasting until the NOTICE marker
+:: - reinstated 1809 [RS5] with native xml patching of products.xml for MCT; fixed exit/b on the same line with condition
 
 :: Comment to not unhide combined business editions in products.xml that include them: 1709, 1803, 1809
 set "UNHIDE_BUSINESS=yes"
@@ -34,8 +35,9 @@ goto version-RS%MCT_VERSION%
 
 :version-RS5
 set "V=1809"
-set "D=20180924"
-set "CAB=http://download.microsoft.com/download/6/F/B/6FB97F08-E010-48A4-A9DC-18FCA920CEB4/products_20180924.cab"
+set "D=20181002"
+set "CAB=" &rem "http://download.microsoft.com/download/6/F/B/6FB97F08-E010-48A4-A9DC-18FCA920CEB4/products_20180924.cab"
+set "XML=https://download.microsoft.com/download/8/D/F/8DF0EA49-0A7B-4F4D-A6DE-4DF7FA00FB7B/products.xml" &set "CAT=1.3"
 set "MCT=http://software-download.microsoft.com/download/pr/MediaCreationTool1809.exe"
 goto process
 
@@ -73,9 +75,9 @@ goto process
 echo.
 echo  Selected MediaCreationTool.exe for Windows 10 Version %V% - %D%
 echo.
-echo  'Windows 10' default MCT choice is usually combined consumer: Pro + Edu + Home
-echo  'Windows 10 Enterprise'  is usually combined business: Pro VL +  Edu VL +  Ent
-echo   RS1 and RS2 originally have no business! Added single Pro VL or Edu VL or Ent
+echo  "Windows 10" default MCT choice is usually combined consumer: Pro + Edu + Home
+echo  "Windows 10 Enterprise"  is usually combined business: Pro VL +  Edu VL +  Ent
+echo   RS1 and RS2 for business only come as individual idx: Pro VL or Edu VL or Ent
 echo.
 echo  Info: MCT depends on BITS service! If any issues, run script as Admin..
 bitsadmin.exe /reset /allusers >nul 2>nul
@@ -87,24 +89,32 @@ del /f /q products.* 2>nul &rem rd /s/q C:\$Windows.~WS 2>nul & rd /s/q C:\$WIND
 :: download MCT
 set "DOWNLOAD=(new-object System.Net.WebClient).DownloadFile"
 if not exist MediaCreationTool%V%.exe powershell -noprofile -c "%DOWNLOAD%('%MCT%','MediaCreationTool%V%.exe');"
-if not exist MediaCreationTool%V%.exe color 0c & echo Error! missing MediaCreationTool%V%.exe & pause & exit /b
-:: download CAB
-if not exist products_%D%.cab powershell -noprofile -c "%DOWNLOAD%('%CAB%','products_%D%.cab');"
-if not exist products_%D%.cab color 0c & echo Error! missing products_%D%.cab & pause & exit /b
-:: unpack CAB
-expand.exe -R products_%D%.cab -F:* . >nul 2>nul
-if not exist products.xml color 0c & echo Error! bad or missing products_%D%.cab & pause & exit /b
-set "patch="
+if not exist MediaCreationTool%V%.exe color 0e & echo Warning! missing MediaCreationTool%V%.exe
+:: download and expand CAB
+if defined CAB if not exist products_%D%.cab powershell -noprofile -c "%DOWNLOAD%('%CAB%','products_%D%.cab');"
+if defined CAB if not exist products_%D%.cab color 0e & echo Warning! cannot download products_%D%.cab & set "CAB="
+if defined CAB if exist products_%D%.cab expand.exe -R products_%D%.cab -F:* . >nul 2>nul
+:: download fallback XML
+if defined XML if not exist products_%D%.xml powershell -noprofile -c "%DOWNLOAD%('%XML%','products_%D%.xml');"
+if defined XML if not exist products_%D%.xml color 0e & echo Warning! cannot download products_%D%.xml & set "XML="
+if defined XML if not exist products.xml copy /y products_%D%.xml products.xml >nul 2>nul
+:: got products.xml?
+if not exist products.xml color 0c & echo Error! products_%D%.cab or products_%D%.xml are not available atm & pause & exit /b
+:: patch fallback XML for MCT
+if not defined CAT set "CAT=1.3"
+set "p1=[xml]$r=New-Object System.Xml.XmlDocument; $d=$r.CreateXmlDeclaration('1.0','UTF-8',$null); $null=$r.AppendChild($d);"
+set "p2=$tmp=$r; foreach($n in @('MCT','Catalogs','Catalog')){ $e=$r.CreateElement($n); $null=$tmp.AppendChild($e); $tmp=$e; };"
+set "p3=$h=$r.SelectNodes('/MCT/Catalogs/Catalog')[0];$h.SetAttribute('version','%CAT%'); [xml]$p=Get-Content './products.xml';"
+set "p4=$null=$h.AppendChild($r.ImportNode($p.PublishedMedia,$true)); $r.Save('./products.xml')"
+if defined XML powershell -noprofile -c "%p1% %p2% %p3% %p4%"
 :: patch XML url for EULAs as older MCT has issues downloading them specially under naked Windows 7 host (likely TLS issue)
 set "EULA_FIX=http://download.microsoft.com/download/C/0/3/C036B882-9F99-4BC9-A4B5-69370C4E17E9"
-set "p1=foreach ($e in $p.MCT.Catalogs.Catalog.PublishedMedia.EULAS.EULA){$e.URL='%EULA_FIX%/EULA'+($e.URL -split '/EULA')[1]}"
-set "patch=%patch%; %p1%"
+set "p5=foreach ($e in $p.MCT.Catalogs.Catalog.PublishedMedia.EULAS.EULA){$e.URL='%EULA_FIX%/EULA'+($e.URL -split '/EULA')[1]}"
+powershell -noprofile -c "[xml]$p = Get-Content './products.xml'; %p5%; $p.Save('./products.xml')"
 :: patch XML to unhide combined business editions in products.xml that include them: 1709, 1803, 1809
-set "p2=foreach ($e in $p.MCT.Catalogs.Catalog.PublishedMedia.Files.File){ if ($e.Edition -eq 'Enterprise'){"
-set "p3= $e.IsRetailOnly = 'False'; $e.Edition_Loc = 'Windows 10 ' + $e.Edition } }"
-if "%UNHIDE_BUSINESS%"=="yes" set "patch=%patch%; %p2%%p3%"
-:: execute all selected patches in one go - no longer brute-force regex, but via safer native xml
-powershell -noprofile -c "[xml]$p = Get-Content './products.xml'; %patch%; $p.Save('./products.xml')"
+set "p6=foreach ($e in $p.MCT.Catalogs.Catalog.PublishedMedia.Files.File){ if ($e.Edition -eq 'Enterprise'){"
+set "p7= $e.IsRetailOnly = 'False'; $e.Edition_Loc = 'Windows 10 ' + $e.Edition } }"
+if "%UNHIDE_BUSINESS%"=="yes" powershell -noprofile -c "[xml]$p=Get-Content './products.xml';%p6%%p7%;$p.Save('./products.xml')"
 :: patch XML to create individual business editions in products.xml that never included them: 1607, 1703
 call :create_business >nul 2>nul
 :: repack XML into CAB
@@ -121,13 +131,13 @@ set "s3=foreach($l in $choices){ $b=New-Object System.Windows.Forms.Button; $b.T
 set "s4= $b.Location='8,'+(32*$i);$b.Margin='8,4,8,4';$b.MinimumSize='320,20';$b.add_Click({$global:c=$this.Name;$f.Close()});"
 set "s5= $f.Controls.Add($b); $i++ }; $f.AcceptButton=$f.Controls[0]; $f.CancelButton=$f.Controls[-1]; $f.MaximizeBox=0; "
 set "s6=$f.Add_Shown({$f.Activate()}); $null=$f.ShowDialog(); if($global:c -ne 0){write-host $global:c}"
-for /l %%# in (1,1,6) do call set "ps_Choice=%%ps_Choice%%%%s%%#:"=\"%%"
-endlocal & for /f "tokens=* delims=" %%# in ('powershell -noprofile -c "%ps_Choice%"') do set "%~3=%%#" &exit/b
+for /l %%i in (1,1,6) do call set "ps_Choice=%%ps_Choice%%%%s%%i:"=\"%%"
+endlocal & for /f "tokens=* delims=" %%s in ('powershell -noprofile -c "%ps_Choice%"') do set "%~3=%%s"
+exit/b
 
-
-::##############################################################################################################################
+::==============================================================================================================================
 :NOTICE: IF NOT INTERESTED IN BUSINESS EDITIONS FOR 1607 AND 1703, CAN STOP COPY/PASTING SCRIPT AFTER THIS LINE AND SAVE 50KB!
-::##############################################################################################################################
+::==============================================================================================================================
 
 
 :: For completeness, create VL entries for products.xml that never included them: 1607, 1703
@@ -136,8 +146,9 @@ endlocal & for /f "tokens=* delims=" %%# in ('powershell -noprofile -c "%ps_Choi
 :create_business
 if %V% EQU 1607 set "params= $release='RS1'; $build='14393'; $date='/2017/01/'; $code='.0.161119-1705.rs1_refresh';"
 if %V% EQU 1703 set "params= $release='RS2'; $build='15063'; $date='/2017/07/'; $code='.0.170710-1358.rs2_release_svc_refresh';"
-if "%CREATE_BUSINESS%"=="yes" if %V% LSS 1709 powershell -noprofile -c "%params%; iex ( ${%~f0} | out-string )" & exit/b
-#: End of Batch - PowerShell code below this marker = #>
+if "%CREATE_BUSINESS%"=="yes" if %V% LSS 1709 powershell -noprofile -c "%params%; iex ( ${%~f0} | out-string )"
+exit/b
+:: End of Batch - PowerShell code below this marker = #>
 $csv=ConvertFrom-CSV -Input @"
 Edition,Arch,Lang,RS1dir,RS1sha1,RS1size,RS2dir,RS2sha1,RS2size
 e,x64,ar-sa,d/updt,672bb229c831b84e95a6dbff94818528894540d3,2955820350,d/upgr,8efb029378cd955809e67baf2cc71c53c632e32c,3269761758,
@@ -541,5 +552,4 @@ foreach ($e in @('e','eN','p','pN','u','uN')){
   }
 }
 $p.Save('./products.xml')
-
-#: end
+#: /*_*/
