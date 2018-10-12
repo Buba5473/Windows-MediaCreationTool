@@ -1,5 +1,5 @@
 <# :: Ninja edits = https://pastebin.com/bBw0Avc4                             Gist mirror = https://git.io/MediaCreationTool.bat
-@echo off &title MediaCreationTool.bat by AveYo v2018.10.10
+@echo off &title MediaCreationTool.bat by AveYo v2018.10.12
 :: Universal MediaCreationTool wrapper for all "RedStone" Windows 10 MCT versions: 1607, 1703, 1709, 1803 and 1809
 :: Using as source nothing but microsoft-hosted original files for the current and past Windows 10 MCT releases
 :: Ingenious full support for business editions (Enterprise / VL) selecting language, x86, x64 or AIO inside MCT GUI
@@ -9,6 +9,7 @@
 :: - generating products.xml entries for business editions in 1607 and 1703 that never had them included so far (optional)
 :: - 50KB increase in script size is well worth above feature imho but you can skip it by copy/pasting until the NOTICE marker
 :: - reinstated 1809 [RS5] with native xml patching of products.xml for MCT; fixed exit/b on the same line with condition
+:: - added data loss warning for RS5
 
 :: Comment to not unhide combined business editions in products.xml that include them: 1709, 1803, 1809
 set "UNHIDE_BUSINESS=yes"
@@ -79,6 +80,21 @@ echo  "Windows 10" default MCT choice is usually combined consumer: Pro + Edu + 
 echo  "Windows 10 Enterprise"  is usually combined business: Pro VL +  Edu VL +  Ent
 echo   RS1 and RS2 for business only come as individual idx: Pro VL or Edu VL or Ent
 echo.
+
+
+set "w1= WARNING! RS5 bug still present. Just to be safe and prevent data-loss"
+set "w2= move all personal files: Documents, Pictures, Videos, Downloads, etc."
+set "w3= from inside your profile folder  %USERPROFILE%"
+set "w4= to other partition or folder in  %SYSTEMDRIVE%"
+set "WARN=@('%w1%','%w2%','%w3%','%w4%') | foreach{ write-host $_.PadRight(79,[char]160)"
+if %V% EQU 1809 (
+ set "OPTIONS=%OPTIONS:Telemetry Disable=Telemetry Enable%"
+ powershell -noprofile -c "%WARN% -ForegroundColor Yellow -BackgroundColor DarkMagenta }"
+ echo.
+ timeout /t 3 >nul
+)
+
+
 echo  Info: MCT depends on BITS service! If any issues, run script as Admin..
 bitsadmin.exe /reset /allusers >nul 2>nul
 net stop bits /y 2>nul
