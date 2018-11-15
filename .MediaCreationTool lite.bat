@@ -1,5 +1,4 @@
-<# :: Ninja edits = https://pastebin.com/bBw0Avc4                             Gist mirror = https://git.io/MediaCreationTool.bat
-@echo off &title MediaCreationTool.bat by AveYo v2018.10.12
+@echo off &title MediaCreationTool.bat by AveYo v2018.11.13  ||  pastebin.com/bBw0Avc4  or  git.io/MediaCreationTool.bat
 :: Universal MediaCreationTool wrapper for all "RedStone" Windows 10 MCT versions: 1607, 1703, 1709, 1803 and 1809
 :: Using as source nothing but microsoft-hosted original files for the current and past Windows 10 MCT releases
 :: Ingenious full support for business editions (Enterprise / VL) selecting language, x86, x64 or AIO inside MCT GUI
@@ -8,8 +7,8 @@
 :: - patching all eula links to use http as MCT can fail at downloading - specially under naked Windows 7 host / outdated TLS
 :: - generating products.xml entries for business editions in 1607 and 1703 that never had them included so far (optional)
 :: - 50KB increase in script size is well worth above feature imho but you can skip it by copy/pasting until the NOTICE marker
-:: - reinstated 1809 [RS5] with native xml patching of products.xml for MCT; fixed exit/b on the same line with condition
-:: - added data loss warning for RS5
+:: - reinstated 1809 [RS5] with native xml patching of products.xml for MCT; added data loss warning for RS5
+:: - RS5 is officially back! And a greatly improved choices dialog - feel free to use the small snippet in your own scripts
 
 :: Comment to not unhide combined business editions in products.xml that include them: 1709, 1803, 1809
 set "UNHIDE_BUSINESS=yes"
@@ -27,18 +26,17 @@ rem set "OPTIONS=%OPTIONS% /Console"
 rem set/a MCT_VERSION=5
 
 :: Available MCT versions
-set versions= 1 8 0 9  [ R S 5 ], 1 8 0 3  [ R S 4 ], 1 7 0 9  [ R S 3 ], 1 7 0 3  [ R S 2 ], 1 6 0 7  [ R S 1 ]
+set versions=  1607 [RS1], 1703 [RS2], 1709 [RS3], 1803 [RS4], 1809 [RS5]
 
-:: Show gui dialog 1:title 2:choices 3:output_variable
-if not defined MCT_VERSION call :choice "Choose MCT Windows 10 Version:" "%versions%" MCT_VERSION
+:: Show dialog w buttons: 1=outvar 2="choices" 3=selected [optional] 4="caption" 5=textsize 6=backcolor 7=textcolor 8=minsize
+if not defined MCT_VERSION call :choices MCT_VERSION "%versions%" 5 "Choose MCT Windows 10 Version:" 15 0xff180052 Snow 400
 if not defined MCT_VERSION echo No MCT_VERSION selected, exiting.. & timeout /t 5 & exit/b
 goto version-RS%MCT_VERSION%
 
 :version-RS5
 set "V=1809"
-set "D=20181002"
-set "CAB=" &rem "http://download.microsoft.com/download/6/F/B/6FB97F08-E010-48A4-A9DC-18FCA920CEB4/products_20180924.cab"
-set "XML=https://download.microsoft.com/download/8/D/F/8DF0EA49-0A7B-4F4D-A6DE-4DF7FA00FB7B/products.xml" &set "CAT=1.3"
+set "D=20181105"
+set "CAB=http://download.microsoft.com/download/B/6/E/B6E8893F-ECE0-42E5-A9ED-69A13DD0BA95/products_20181105.cab"
 set "MCT=http://software-download.microsoft.com/download/pr/MediaCreationTool1809.exe"
 goto process
 
@@ -80,25 +78,14 @@ echo  "Windows 10" default MCT choice is usually combined consumer: Pro + Edu + 
 echo  "Windows 10 Enterprise"  is usually combined business: Pro VL +  Edu VL +  Ent
 echo   RS1 and RS2 for business only come as individual idx: Pro VL or Edu VL or Ent
 echo.
-
-
-set "w1= WARNING! RS5 bug still present. Just to be safe and prevent data-loss"
-set "w2= move all personal files: Documents, Pictures, Videos, Downloads, etc."
-set "w3= from inside your profile folder  %USERPROFILE%"
-set "w4= to other partition or folder in  %SYSTEMDRIVE%"
-set "WARN=@('%w1%','%w2%','%w3%','%w4%') | foreach{ write-host $_.PadRight(79,[char]160)"
-if %V% EQU 1809 (
- set "OPTIONS=%OPTIONS:Telemetry Disable=Telemetry Enable%"
- powershell -noprofile -c "%WARN% -ForegroundColor Yellow -BackgroundColor DarkMagenta }"
- echo.
- timeout /t 3 >nul
-)
-
-
-echo  Info: MCT depends on BITS service! If any issues, run script as Admin..
+echo  If any issues, run script as Admin / check BITS service!
+echo  Please wait while preparing products_%D%.cab and MediaCreationTool%V%.exe ...
 bitsadmin.exe /reset /allusers >nul 2>nul
 net stop bits /y 2>nul
 net start bits /y 2>nul
+
+if %V% EQU 1809 set "OPTIONS=%OPTIONS:Telemetry Disable=Telemetry Enable%" &rem Just in case MS screwed up again..
+
 :: cleanup - can include temporary files too but not recommended as you can't resume via C:\$Windows.~WS\Sources\setuphost
 pushd "%~dp0"
 del /f /q products.* 2>nul &rem rd /s/q C:\$Windows.~WS 2>nul & rd /s/q C:\$WINDOWS.~BT 2>nul
@@ -139,17 +126,18 @@ makecab products.xml products.cab >nul
 start "" MediaCreationTool%V%.exe /Selfhost %OPTIONS%
 exit/b
 
-:choice 1=title 2=choices 3=output_variable [button number]       GUI buttons dialog snippet by AveYo released under MIT License
-setlocal & set "ps_Choice=$title='%~1'; $choices='%~2,Cancel'.split(','); $n=$choices.length; $global:c=''; $i=1; "
-set "s1=[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');$f=New-Object System.Windows.Forms.Form"
-set "s2=;$f.Text=$title; $f.BackColor=0xff180052; $f.Forecolor='Snow'; $f.StartPosition=4; $f.AutoSize=1; $f.FormBorderStyle=3;"
-set "s3=foreach($l in $choices){ $b=New-Object System.Windows.Forms.Button; $b.Text=$l; $b.Name=$n-$i; $b.cursor='Hand';"
-set "s4= $b.Location='8,'+(32*$i);$b.Margin='8,4,8,4';$b.MinimumSize='320,20';$b.add_Click({$global:c=$this.Name;$f.Close()});"
-set "s5= $f.Controls.Add($b); $i++ }; $f.AcceptButton=$f.Controls[0]; $f.CancelButton=$f.Controls[-1]; $f.MaximizeBox=0; "
-set "s6=$f.Add_Shown({$f.Activate()}); $null=$f.ShowDialog(); if($global:c -ne 0){write-host $global:c}"
-for /l %%i in (1,1,6) do call set "ps_Choice=%%ps_Choice%%%%s%%i:"=\"%%"
-endlocal & for /f "tokens=* delims=" %%s in ('powershell -noprofile -c "%ps_Choice%"') do set "%~3=%%s"
-exit/b
+:choices dialog w buttons: 1=outvar 2="choices" 3=selected [optional] 4="caption" 5=textsize 6=backcolor 7=textcolor 8=minsize
+set "snippet=iex(([io.file]::ReadAllText('%~f0')-split':PS_CHOICE\:.*')[1]); Choices %*"
+(for /f "usebackq" %%s in (`powershell -noprofile -c "%snippet:"='%"`) do set "%~1=%%s") &exit/b :PS_CHOICE:
+function Choices($outputvar,$choices,$sel=1,$caption='Choose',[byte]$sz=12,$bc='MidnightBlue',$fc='Snow',[string]$min='400') {
+ [void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); $f=New-Object System.Windows.Forms.Form;
+ $bt=@(); $i=1; $global:rez=''; $ch=($choices+',Cancel').split(','); $ch | foreach { $b=New-Object System.Windows.Forms.Button;
+ $b.Name=$i; $b.Text=$_; $b.Font='Tahoma,'+$sz; $b.Margin='0,0,9,9'; $b.Location='9,'+($sz*3*$i-$sz); $b.MinimumSize=$min+',18';
+ $b.AutoSize=1; $b.cursor='Hand'; $b.add_Click({$global:rez=$this.Name;$f.Close()}); $f.Controls.Add($b); $bt+=$b; $i++ }
+ $f.Text=$caption; $f.BackColor=$bc; $f.ForeColor=$fc; $f.StartPosition=4; $f.AutoSize=1; $f.AutoSizeMode=0; $f.MaximizeBox=0;
+ $f.AcceptButton=$bt[$sel-1]; $f.CancelButton=$bt[-1]; $f.Add_Shown({$f.Activate();$bt[$sel-1].focus()}); $null=$f.ShowDialog();
+ if($global:rez -ne $ch.length){ return $global:rez }else{ return $null } }  :PS_CHOICE:
+:: Let's Make Console Scripts Friendlier Initiative by AveYo - MIT License -     call :choices rez "one, 2 two, three" 3 'Usage'
 
 ::==============================================================================================================================
 :NOTICE: IF INTERESTED IN BUSINESS EDITIONS FOR 1607 AND 1703 TOO, GET THE FULL SCRIPT FROM THE LINKS AT THE TOP
