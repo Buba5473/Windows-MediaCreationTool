@@ -27,7 +27,7 @@ rem set OPTIONS=%OPTIONS% /MediaEdition Enterprise /MediaArch x64 /MediaLangCode
 set OPTIONS=%OPTIONS% /Eula Accept /MigChoice Upgrade /Auto Upgrade
 
 :: Uncomment to show live mct console log for debugging
-set "OPTIONS=%OPTIONS% /Console /DiagnosticPrompt enable /NoReboot"
+rem set "OPTIONS=%OPTIONS% /Console /DiagnosticPrompt enable /NoReboot"
 
 :: Uncomment to bypass gui dialog choice and hardcode the target version: 1=1607, 2=1703, 3=1709, 4=1803, 5=1809
 set/a MCT_VERSION=5
