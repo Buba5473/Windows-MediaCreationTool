@@ -1,4 +1,4 @@
-@echo off &title MediaCreationTool.bat by AveYo v2018.11.13  ||  pastebin.com/bBw0Avc4  or  git.io/MediaCreationTool.bat
+@echo off &title MediaCreationTool.bat by AveYo v2018.11.15  ||  pastebin.com/bBw0Avc4  or  git.io/MediaCreationTool.bat
 :: Universal MediaCreationTool wrapper for all "RedStone" Windows 10 MCT versions: 1607, 1703, 1709, 1803 and 1809
 :: Using as source nothing but microsoft-hosted original files for the current and past Windows 10 MCT releases
 :: Ingenious full support for business editions (Enterprise / VL) selecting language, x86, x64 or AIO inside MCT GUI
@@ -9,6 +9,7 @@
 :: - 50KB increase in script size is well worth above feature imho but you can skip it by copy/pasting until the NOTICE marker
 :: - reinstated 1809 [RS5] with native xml patching of products.xml for MCT; added data loss warning for RS5
 :: - RS5 is officially back! And a greatly improved choices dialog - feel free to use the small snippet in your own scripts
+:: - added Auto Upgrade launch options preset with support for a setupcomplete.cmd in the current folder
 
 :: Comment to not unhide combined business editions in products.xml that include them: 1709, 1803, 1809
 set "UNHIDE_BUSINESS=yes"
@@ -17,10 +18,16 @@ set "UNHIDE_BUSINESS=yes"
 set "CREATE_BUSINESS=yes"
 
 :: Add / remove launch parameters below if needed - it is preset for least amount of issues when doing upgrades
-set "OPTIONS=/Telemetry Disable /DynamicUpdate Disable /MigrateDrivers all /ResizeRecoveryPartition disable /ShowOOBE none"
+set OPTIONS=/Telemetry Disable /DynamicUpdate Disable /MigrateDrivers all /ResizeRecoveryPartition disable /ShowOOBE none
+
+:: Uncomment to force a specific Edition, Architecture and Language - if enabled, all 3 must be used
+rem set OPTIONS=%OPTIONS% /MediaEdition Enterprise /MediaArch x64 /MediaLangCode en-us
+
+:: Uncomment to force Auto Upgrade - no user intervention needed
+rem set OPTIONS=%OPTIONS% /Eula Accept /MigChoice Upgrade /Auto Upgrade
 
 :: Uncomment to show live mct console log for debugging
-rem set "OPTIONS=%OPTIONS% /Console"
+rem set "OPTIONS=%OPTIONS% /Console /DiagnosticPrompt enable /NoReboot"
 
 :: Uncomment to bypass gui dialog choice and hardcode the target version: 1=1607, 2=1703, 3=1709, 4=1803, 5=1809
 rem set/a MCT_VERSION=5
@@ -80,11 +87,12 @@ echo   RS1 and RS2 for business only come as individual idx: Pro VL or Edu VL or
 echo.
 echo  If any issues, run script as Admin / check BITS service!
 echo  Please wait while preparing products_%D%.cab and MediaCreationTool%V%.exe ...
+echo.
 bitsadmin.exe /reset /allusers >nul 2>nul
 net stop bits /y 2>nul
 net start bits /y 2>nul
 
-if %V% EQU 1809 set "OPTIONS=%OPTIONS:Telemetry Disable=Telemetry Enable%" &rem Just in case MS screwed up again..
+::if %V% EQU 1809 set "OPTIONS=%OPTIONS:Telemetry Disable=Telemetry Enable%" &rem Just in case MS screwed up again..
 
 :: cleanup - can include temporary files too but not recommended as you can't resume via C:\$Windows.~WS\Sources\setuphost
 pushd "%~dp0"
@@ -123,7 +131,14 @@ call :create_business >nul 2>nul
 :: repack XML into CAB
 makecab products.xml products.cab >nul
 :: finally launch MCT with local configuration and optional launch parameters
-start "" MediaCreationTool%V%.exe /Selfhost %OPTIONS%
+if /i "%OPTIONS:/MigChoice Upgrade=%"=="%OPTIONS%" start "" MediaCreationTool%V%.exe /Selfhost %OPTIONS% & exit/b
+:: if Upgrade selected, wait for MCT to finish then run setupprep with parameteres directly to overcome MCT limitations
+set OPTIONS=/Selfhost %OPTIONS% /PostOOBE "%~dp0setupcomplete.cmd" & if not exist setupcomplete.cmd cd.>setupcomplete.cmd
+set "p1=MediaCreationTool%V%.exe /Selfhost %OPTIONS% /Action CreateUpgradeMedia /NoFinalize"
+set "p2=(if not exist C:\ESD\Windows\sources\setupprep.exe exit)"
+set "p3=echo start \"setup\" \"%%~dp0sources\setupprep.exe\" %OPTIONS% > C:\ESD\Windows\auto.bat"
+set "p4=start \"setup\" /min cmd.exe /c C:\ESD\Windows\auto.bat"
+powershell -c "Start-Process cmd.exe -ArgumentList '/c %p1% & %p2% & %p3% & %p4%' -WindowStyle Hidden"
 exit/b
 
 :choices dialog w buttons: 1=outvar 2="choices" 3=selected [optional] 4="caption" 5=textsize 6=backcolor 7=textcolor 8=minsize

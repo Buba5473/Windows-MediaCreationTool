@@ -24,13 +24,13 @@ set OPTIONS=/Telemetry Disable /DynamicUpdate Disable /MigrateDrivers all /Resiz
 rem set OPTIONS=%OPTIONS% /MediaEdition Enterprise /MediaArch x64 /MediaLangCode en-us
 
 :: Uncomment to force Auto Upgrade - no user intervention needed
-rem set OPTIONS=%OPTIONS% /Eula Accept /MigChoice Upgrade /Auto Upgrade
+set OPTIONS=%OPTIONS% /Eula Accept /MigChoice Upgrade /Auto Upgrade
 
 :: Uncomment to show live mct console log for debugging
-rem set "OPTIONS=%OPTIONS% /Console /DiagnosticPrompt enable /NoReboot"
+set "OPTIONS=%OPTIONS% /Console /DiagnosticPrompt enable /NoReboot"
 
 :: Uncomment to bypass gui dialog choice and hardcode the target version: 1=1607, 2=1703, 3=1709, 4=1803, 5=1809
-rem set/a MCT_VERSION=5
+set/a MCT_VERSION=5
 
 :: Available MCT versions
 set versions=  1607 [RS1], 1703 [RS2], 1709 [RS3], 1803 [RS4], 1809 [RS5]
