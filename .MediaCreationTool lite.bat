@@ -1,4 +1,4 @@
-@echo off &title MediaCreationTool.bat by AveYo v2018.11.15  ||  pastebin.com/bBw0Avc4  or  git.io/MediaCreationTool.bat
+@echo off &title MediaCreationTool.bat by AveYo v2019.05.22  ||  pastebin.com/bBw0Avc4  or  git.io/MediaCreationTool.bat
 :: Universal MediaCreationTool wrapper for all "RedStone" Windows 10 MCT versions: 1607, 1703, 1709, 1803 and 1809
 :: Using as source nothing but microsoft-hosted original files for the current and past Windows 10 MCT releases
 :: Ingenious full support for business editions (Enterprise / VL) selecting language, x86, x64 or AIO inside MCT GUI
@@ -10,6 +10,7 @@
 :: - reinstated 1809 [RS5] with native xml patching of products.xml for MCT; added data loss warning for RS5
 :: - RS5 is officially back! And a greatly improved choices dialog - feel free to use the small snippet in your own scripts
 :: - added Auto Upgrade launch options preset with support for a setupcomplete.cmd in the current folder
+:: - 1903 [19H1] release
 
 :: Comment to not unhide combined business editions in products.xml that include them: 1709, 1803, 1809
 set "UNHIDE_BUSINESS=yes"
@@ -30,15 +31,22 @@ rem set OPTIONS=%OPTIONS% /Eula Accept /MigChoice Upgrade /Auto Upgrade
 rem set "OPTIONS=%OPTIONS% /Console /DiagnosticPrompt enable /NoReboot"
 
 :: Uncomment to bypass gui dialog choice and hardcode the target version: 1=1607, 2=1703, 3=1709, 4=1803, 5=1809
-rem set/a MCT_VERSION=5
+rem set/a MCT_VERSION=6
 
 :: Available MCT versions
-set versions=  1607 [RS1], 1703 [RS2], 1709 [RS3], 1803 [RS4], 1809 [RS5]
+set versions=  1607 [RS1], 1703 [RS2], 1709 [RS3], 1803 [RS4], 1809 [RS5], 1903 [19H1]
 
 :: Show dialog w buttons: 1=outvar 2="choices" 3=selected [optional] 4="caption" 5=textsize 6=backcolor 7=textcolor 8=minsize
-if not defined MCT_VERSION call :choices MCT_VERSION "%versions%" 5 "Choose MCT Windows 10 Version:" 15 0xff180052 Snow 400
+if not defined MCT_VERSION call :choices MCT_VERSION "%versions%" 6 "Choose MCT Windows 10 Version:" 15 0xff180052 Snow 400
 if not defined MCT_VERSION echo No MCT_VERSION selected, exiting.. & timeout /t 5 & exit/b
 goto version-RS%MCT_VERSION%
+
+:version-RS6
+set "V=1903"
+set "D=20190502"
+set "CAB=https://download.microsoft.com/download/5/8/4/584230EE-70C4-46D6-B992-FDAE62820615/products_20190502.cab"
+set "MCT=https://software-download.microsoft.com/download/pr/MediaCreationTool1903.exe"
+goto process
 
 :version-RS5
 set "V=1809"
